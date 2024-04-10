@@ -14,13 +14,20 @@ import {
 const app = express();
 
 const getAllContacts = async (req, res) => {
-  const result = await listContacts();
+  const { _id: owner } = req.user;
+  const { page = 1, limit = 20 } = req.query;
+
+  const skip = (page - 1) * limit;
+
+  const result = await listContacts({ owner }, { skip, limit });
   res.json(result);
 };
 
 const getOneContact = async (req, res) => {
   const { id } = req.params;
-  const result = await getContactById(id);
+  const { _id: owner } = req.user;
+
+  const result = await getContactById({ _id: id, owner });
   if (!result) {
     throw HttpError(404);
   }
@@ -28,8 +35,10 @@ const getOneContact = async (req, res) => {
 };
 
 const deleteContact = async (req, res) => {
+  const { _id: owner } = req.user;
   const { id } = req.params;
-  const result = await removeContact(id);
+
+  const result = await removeContact({ _id: id, owner });
   if (!result) {
     throw HttpError(404);
   }
@@ -37,7 +46,9 @@ const deleteContact = async (req, res) => {
 };
 
 const createContact = async (req, res) => {
-  const result = await addContact(req.body);
+  const { _id: owner } = req.user;
+
+  const result = await addContact({ ...req.body, owner });
   res.status(201).json(result);
 
   if (!result) {
@@ -47,13 +58,14 @@ const createContact = async (req, res) => {
 
 const updateContact = async (req, res) => {
   const { id } = req.params;
+  const { _id: owner } = req.user;
 
   if (Object.keys(req.body).length === 0) {
     return res
       .status(400)
       .json({ message: "Body must have at least one field" });
   }
-  const result = await updateContactById(id, req.body);
+  const result = await updateContactById({ _id: id, owner }, req.body);
   if (!result) {
     throw HttpError(404);
   }
@@ -62,6 +74,7 @@ const updateContact = async (req, res) => {
 
 const updateFavorite = async (req, res) => {
   const { id } = req.params;
+  const { _id: owner } = req.user;
 
   if (Object.keys(req.body).length === 0) {
     return res
@@ -69,7 +82,7 @@ const updateFavorite = async (req, res) => {
       .json({ message: "Body must have at least one field" });
   }
 
-  const result = await updateContactById(id, req.body);
+  const result = await updateContactById({ _id: id, owner }, req.body);
   if (!result) {
     throw HttpError(404);
   }
