@@ -30,15 +30,21 @@ const signup = async (req, res) => {
   const avatarURL = gravatar.url(email);
   const verificationToken = nanoid();
 
-  const newUser = await createUser(req.body);
-  res.status(201).json({
-    user: {
-      email: newUser.email,
-      subscription: newUser.subscription,
-      avatarURL,
-      verificationToken,
-    },
+  const newUser = await createUser({
+    ...req.body,
+    password: hashPassword,
+    avatarURL,
+    verificationToken,
   });
+
+  // res.status(201).json({
+  //   user: {
+  //     email: newUser.email,
+  //     subscription: newUser.subscription,
+  //     avatarURL,
+  //     verificationToken,
+  //   },
+  // });
 
   const verifyEmail = {
     to: email,
@@ -129,7 +135,7 @@ const updateAvatar = async (req, res) => {
 
 export const verifyEmail = async (req, res) => {
   const { verificationToken } = req.params;
-  const user = await findUserEmail({ verificationToken });
+  const user = await findUser({ verificationToken });
 
   if (!user) {
     throw HttpError(401, "Email not found");
@@ -144,7 +150,7 @@ export const verifyEmail = async (req, res) => {
 
 export const resendVerifyEmail = async (req, res) => {
   const { email } = req.body;
-  const user = await findUserEmail({ email });
+  const user = await findUser({ email });
 
   if (!user) {
     throw HttpError(401, "Email not found");
