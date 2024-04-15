@@ -12,8 +12,11 @@ import gravatar from "gravatar";
 import path from "path";
 import fs from "fs/promises";
 import jimp from "jimp";
+import { nanoid } from "nanoid";
 
-const { JWT_SECRET } = process.env;
+import { sendEmail } from "../helpers/sendEmail.js";
+
+const { JWT_SECRET, BASE_URL } = process.env;
 
 const signup = async (req, res) => {
   const { email } = req.body;
@@ -25,13 +28,28 @@ const signup = async (req, res) => {
 
   const hashPassword = await bcrypt.hash(password, 10);
   const avatarURL = gravatar.url(email);
+  const verificationToken = nanoid();
+
   const newUser = await createUser(req.body);
   res.status(201).json({
     user: {
       email: newUser.email,
       subscription: newUser.subscription,
       avatarURL,
+      verificationToken,
     },
+  });
+
+  const verifyEmail = {
+    to: email,
+    subject: "Verify email",
+    html: `<a target = "_blank" href="${BASE_URL}/api/users/verify/${verificationToken}">Click verify email</a>`,
+  };
+
+  await sendEmail(verifyEmail);
+
+  res.status(201).json({
+    user: { email: newUser.email, subscription: newUser.subscription },
   });
 };
 
@@ -109,6 +127,46 @@ const updateAvatar = async (req, res) => {
   res.json({ avatarURL });
 };
 
+export const verifyEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+  const user = await findUserEmail({ verificationToken });
+
+  if (!user) {
+    throw HttpError(401, "Email not found");
+  }
+
+  await updateUser(user._id, { verify: true, verificationToken: null });
+
+  res.json({
+    message: "Verification successful",
+  });
+};
+
+export const resendVerifyEmail = async (req, res) => {
+  const { email } = req.body;
+  const user = await findUserEmail({ email });
+
+  if (!user) {
+    throw HttpError(401, "Email not found");
+  }
+
+  if (user.verify) {
+    throw HttpError(400, "Verification has already been passed");
+  }
+
+  const verifyEmail = {
+    to: email,
+    subject: "Please, verify email",
+    html: `<a target = "_blank" href="${BASE_URL}/api/users/verify/${user.verificationToken}">Click to verify email</a>`,
+  };
+
+  await sendEmail(verifyEmail);
+
+  res.json({
+    message: "Verification email sent",
+  });
+};
+
 export default {
   signup: ctrlWrapper(signup),
   signin: ctrlWrapper(signin),
@@ -116,4 +174,6 @@ export default {
   signout: ctrlWrapper(signout),
   updateSubscription: ctrlWrapper(updateSubscription),
   updateAvatar: ctrlWrapper(updateAvatar),
+  verifyEmail: ctrlWrapper(verifyEmail),
+  resendVerifyEmail: ctrlWrapper(resendVerifyEmail),
 };
