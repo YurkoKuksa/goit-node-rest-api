@@ -3,9 +3,10 @@ import User from "../models/User.js";
 
 export const findUser = (filter) => User.findOne(filter);
 
-export const createUser = async (data) => {
-  const hashPassword = await bcrypt.hash(data.password, 10);
-  return User.create({ ...data, password: hashPassword });
+export const createUser = async (body) => {
+  const newUser = await User.create(body);
+
+  return newUser;
 };
 
 export const updateUser = async (id, data) =>

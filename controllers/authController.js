@@ -19,8 +19,8 @@ import { sendEmail } from "../helpers/sendEmail.js";
 const { JWT_SECRET, BASE_URL } = process.env;
 
 const signup = async (req, res) => {
-  const { email } = req.body;
-  const user = await findUser({ email: email });
+  const { email, password } = req.body;
+  const user = await findUser({ email });
 
   if (user) {
     throw HttpError(409, "Email in use");
